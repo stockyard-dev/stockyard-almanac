@@ -1,0 +1,15 @@
+services:
+  almanac:
+    image: ghcr.io/stockyard-dev/stockyard-almanac:latest
+    ports:
+      - "8940:8940"
+    environment:
+      - PORT=${STOCKYARD_PORT:-8940}
+      - DATA_DIR=${STOCKYARD_DATA_DIR:-/data}
+      - ALMANAC_LICENSE_KEY=${STOCKYARD_ALMANAC_LICENSE_KEY:-}
+    volumes:
+      - almanac-data:/data
+    restart: unless-stopped
+volumes:
+  almanac-data:
+    driver: local
