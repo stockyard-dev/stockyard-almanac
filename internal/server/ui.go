@@ -1,91 +1,21 @@
 package server
-
 import "net/http"
-
-const uiHTML = `<!DOCTYPE html><html lang="en"><head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Almanac — Stockyard</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-<style>:root{--bg:#1a1410;--bg2:#241e18;--bg3:#2e261e;--rust:#c45d2c;--rust-light:#e8753a;--rust-dark:#8b3d1a;--leather:#a0845c;--leather-light:#c4a87a;--cream:#f0e6d3;--cream-dim:#bfb5a3;--cream-muted:#7a7060;--gold:#d4a843;--green:#5ba86e;--red:#c0392b;--font-serif:'Libre Baskerville',Georgia,serif;--font-mono:'JetBrains Mono',monospace}
-*{margin:0;padding:0;box-sizing:border-box}body{background:var(--bg);color:var(--cream);font-family:var(--font-serif);min-height:100vh}a{color:var(--rust-light);text-decoration:none}a:hover{color:var(--gold)}
-.hdr{background:var(--bg2);border-bottom:2px solid var(--rust-dark);padding:.9rem 1.8rem;display:flex;align-items:center;justify-content:space-between}.hdr-left{display:flex;align-items:center;gap:1rem}.hdr-brand{font-family:var(--font-mono);font-size:.75rem;color:var(--leather);letter-spacing:3px;text-transform:uppercase}.hdr-title{font-family:var(--font-mono);font-size:1.1rem;color:var(--cream);letter-spacing:1px}.badge{font-family:var(--font-mono);font-size:.6rem;padding:.2rem .6rem;letter-spacing:1px;text-transform:uppercase;border:1px solid;color:var(--green);border-color:var(--green)}
-.main{max-width:1000px;margin:0 auto;padding:2rem 1.5rem}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:1rem;margin-bottom:2rem}.card{background:var(--bg2);border:1px solid var(--bg3);padding:1rem 1.2rem}.card-val{font-family:var(--font-mono);font-size:1.6rem;font-weight:700;color:var(--cream);display:block}.card-lbl{font-family:var(--font-mono);font-size:.58rem;letter-spacing:2px;text-transform:uppercase;color:var(--leather);margin-top:.2rem}
-.section{margin-bottom:2rem}.section-title{font-family:var(--font-mono);font-size:.68rem;letter-spacing:3px;text-transform:uppercase;color:var(--rust-light);margin-bottom:.8rem;padding-bottom:.5rem;border-bottom:1px solid var(--bg3)}table{width:100%;border-collapse:collapse;font-family:var(--font-mono);font-size:.75rem}th{background:var(--bg3);padding:.4rem .8rem;text-align:left;color:var(--leather-light);font-weight:400;letter-spacing:1px;font-size:.62rem;text-transform:uppercase}td{padding:.4rem .8rem;border-bottom:1px solid var(--bg3);color:var(--cream-dim)}tr:hover td{background:var(--bg2)}.empty{color:var(--cream-muted);text-align:center;padding:2rem;font-style:italic}
-.btn{font-family:var(--font-mono);font-size:.7rem;padding:.3rem .8rem;border:1px solid var(--leather);background:transparent;color:var(--cream);cursor:pointer;transition:all .2s}.btn:hover{border-color:var(--rust-light);color:var(--rust-light)}.btn-rust{border-color:var(--rust);color:var(--rust-light)}.btn-rust:hover{background:var(--rust);color:var(--cream)}.btn-sm{font-size:.62rem;padding:.2rem .5rem}
-.pill{display:inline-block;font-family:var(--font-mono);font-size:.55rem;padding:.1rem .4rem;border-radius:2px;text-transform:uppercase}.pill-pub{background:#1a3a2a;color:var(--green)}.pill-draft{background:var(--bg3);color:var(--cream-muted)}
-.lbl{font-family:var(--font-mono);font-size:.62rem;letter-spacing:1px;text-transform:uppercase;color:var(--leather)}input,textarea{font-family:var(--font-mono);font-size:.78rem;background:var(--bg3);border:1px solid var(--bg3);color:var(--cream);padding:.4rem .7rem;outline:none;width:100%}input:focus,textarea:focus{border-color:var(--leather)}.row{display:flex;gap:.8rem;align-items:flex-end;flex-wrap:wrap;margin-bottom:1rem}.field{display:flex;flex-direction:column;gap:.3rem}
-.tabs{display:flex;gap:0;margin-bottom:1.5rem;border-bottom:1px solid var(--bg3)}.tab{font-family:var(--font-mono);font-size:.72rem;padding:.6rem 1.2rem;color:var(--cream-muted);cursor:pointer;border-bottom:2px solid transparent;letter-spacing:1px;text-transform:uppercase}.tab:hover{color:var(--cream-dim)}.tab.active{color:var(--rust-light);border-bottom-color:var(--rust-light)}.tab-content{display:none}.tab-content.active{display:block}
-</style></head><body>
-<div class="hdr"><div class="hdr-left">
-<svg viewBox="0 0 64 64" width="22" height="22" fill="none"><rect x="8" y="8" width="8" height="48" rx="2.5" fill="#e8753a"/><rect x="28" y="8" width="8" height="48" rx="2.5" fill="#e8753a"/><rect x="48" y="8" width="8" height="48" rx="2.5" fill="#e8753a"/><rect x="8" y="27" width="48" height="7" rx="2.5" fill="#c4a87a"/></svg>
-<span class="hdr-brand">Stockyard</span><span class="hdr-title">Almanac</span></div>
-<div style="display:flex;gap:.8rem;align-items:center"><span class="badge">Free</span><a href="/changelog" class="lbl" style="color:var(--leather)">Public</a><a href="/changelog/rss" class="lbl" style="color:var(--leather)">RSS</a></div></div>
-<div class="main">
-<div class="cards">
-  <div class="card"><span class="card-val" id="s-published">—</span><span class="card-lbl">Published</span></div>
-  <div class="card"><span class="card-val" id="s-drafts">—</span><span class="card-lbl">Drafts</span></div>
-  <div class="card"><span class="card-val" id="s-subs">—</span><span class="card-lbl">Subscribers</span></div>
-</div>
-<div class="tabs">
-  <div class="tab active" onclick="switchTab('entries')">Entries</div>
-  <div class="tab" onclick="switchTab('create')">Create</div>
-  <div class="tab" onclick="switchTab('usage')">Usage</div>
-</div>
-<div id="tab-entries" class="tab-content active">
-  <div class="section"><div class="section-title">Entries</div>
-  <table><thead><tr><th>Title</th><th>Version</th><th>Status</th><th>Date</th><th></th></tr></thead>
-  <tbody id="entries-body"></tbody></table></div>
-</div>
-<div id="tab-create" class="tab-content">
-  <div class="section"><div class="section-title">New Entry</div>
-  <div class="row"><div class="field" style="flex:2"><span class="lbl">Title</span><input id="c-title" placeholder="What changed"></div><div class="field" style="flex:1"><span class="lbl">Version</span><input id="c-ver" placeholder="v1.2.0"></div></div>
-  <div class="field" style="margin-bottom:.8rem"><span class="lbl">Content</span><textarea id="c-content" rows="6" placeholder="Describe the changes..."></textarea></div>
-  <div class="row"><div class="field"><span class="lbl">Tags (comma-sep)</span><input id="c-tags" placeholder="feature, bugfix" style="width:200px"></div>
-  <label style="display:flex;align-items:center;gap:.4rem;font-family:var(--font-mono);font-size:.72rem;color:var(--cream-dim)"><input type="checkbox" id="c-pub"> Publish immediately</label>
-  <button class="btn btn-rust" onclick="createEntry()">Create</button></div>
-  <div id="c-result"></div></div>
-</div>
-<div id="tab-usage" class="tab-content">
-  <div class="section"><div class="section-title">Quick Start</div><pre>
-# Create an entry
-curl -X POST http://localhost:8940/api/entries \
-  -H "Content-Type: application/json" \
-  -d '{"title":"Dark mode support","version":"v2.1.0",
-       "content":"Added dark mode across all pages.","tags":"feature",
-       "published":true}'
-
-# Public changelog page
-open http://localhost:8940/changelog
-
-# RSS feed
-open http://localhost:8940/changelog/rss
-
-# Embed subscribe form
-&lt;form method="POST" action="http://localhost:8940/changelog/subscribe"&gt;
-  &lt;input name="email" type="email"&gt;
-  &lt;button&gt;Subscribe&lt;/button&gt;
-&lt;/form&gt;
-  </pre></div>
-</div>
-</div>
+func(s *Server)dashboard(w http.ResponseWriter,r *http.Request){w.Header().Set("Content-Type","text/html; charset=utf-8");w.Write([]byte(dashHTML))}
+const dashHTML=`<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Almanac</title>
+<style>:root{--bg:#1a1410;--bg2:#241e18;--bg3:#2e261e;--rust:#c45d2c;--rl:#e8753a;--leather:#a0845c;--cream:#f0e6d3;--cd:#bfb5a3;--cm:#7a7060;--gold:#d4a843;--green:#4a9e5c;--mono:'JetBrains Mono',Consolas,monospace;--serif:'Libre Baskerville',Georgia,serif}*{margin:0;padding:0;box-sizing:border-box}body{background:var(--bg);color:var(--cream);font-family:var(--mono);font-size:13px;line-height:1.6}.hdr{padding:.6rem 1.2rem;border-bottom:1px solid var(--bg3);display:flex;justify-content:space-between;align-items:center}.hdr h1{font-family:var(--serif);font-size:1rem}.hdr h1 span{color:var(--rl)}.main{max-width:650px;margin:0 auto;padding:1rem}.btn{font-family:var(--mono);font-size:.68rem;padding:.3rem .6rem;border:1px solid;cursor:pointer;background:transparent}.btn-p{border-color:var(--rust);color:var(--rl)}.btn-p:hover{background:var(--rust);color:var(--cream)}.overview{display:flex;gap:1.5rem;margin-bottom:1rem;font-size:.7rem;color:var(--leather)}.overview .stat b{display:block;font-size:1.2rem;color:var(--cream)}.entry{background:var(--bg2);border:1px solid var(--bg3);margin-bottom:.5rem;padding:.7rem}.entry-date{font-size:.65rem;color:var(--cm);display:flex;justify-content:space-between}.entry-title{font-size:.85rem;font-weight:600;margin:.2rem 0}.entry-body{font-family:var(--serif);font-size:.82rem;color:var(--cd);line-height:1.8;white-space:pre-wrap}.entry-meta{font-size:.6rem;color:var(--cm);margin-top:.3rem;display:flex;gap:.5rem}.mood{font-size:.75rem}.empty{text-align:center;padding:2rem;color:var(--cm);font-style:italic;font-family:var(--serif)}.modal-bg{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:100}.modal{background:var(--bg2);border:1px solid var(--bg3);padding:1.5rem;width:95%;max-width:600px;max-height:90vh;overflow-y:auto}.modal h2{font-family:var(--serif);font-size:.9rem;margin-bottom:1rem}label.fl{display:block;font-size:.65rem;color:var(--leather);text-transform:uppercase;letter-spacing:1px;margin-bottom:.2rem;margin-top:.5rem}input[type=text],input[type=date],textarea,select{background:var(--bg);border:1px solid var(--bg3);color:var(--cream);padding:.35rem .5rem;font-family:var(--mono);font-size:.78rem;width:100%;outline:none}textarea{resize:vertical;min-height:150px;font-family:var(--serif);font-size:.85rem;line-height:1.8}</style>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital@0;1&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+</head><body><div class="hdr"><h1><span>Almanac</span></h1><button class="btn btn-p" onclick="showNew()">+ Entry</button></div>
+<div class="main"><div class="overview" id="ov"></div><div id="list"></div></div><div id="modal"></div>
 <script>
-function switchTab(n){document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.textContent.toLowerCase()===n));document.querySelectorAll('.tab-content').forEach(t=>t.classList.toggle('active',t.id==='tab-'+n));}
-async function refresh(){
-  try{const s=await(await fetch('/api/status')).json();document.getElementById('s-published').textContent=s.published||0;document.getElementById('s-drafts').textContent=s.drafts||0;document.getElementById('s-subs').textContent=s.subscribers||0;}catch(e){}
-  try{const d=await(await fetch('/api/entries')).json();const es=d.entries||[];const tb=document.getElementById('entries-body');
-  if(!es.length){tb.innerHTML='<tr><td colspan="5" class="empty">No entries yet.</td></tr>';return;}
-  tb.innerHTML=es.map(e=>'<tr><td style="color:var(--cream);font-weight:600">'+esc(e.title)+'</td><td>'+esc(e.version||'—')+'</td><td><span class="pill '+(e.published?'pill-pub':'pill-draft')+'">'+(e.published?'published':'draft')+'</span></td><td style="font-size:.65rem;color:var(--cream-muted)">'+(e.published_at?e.published_at.slice(0,10):timeAgo(e.created_at))+'</td><td>'+(e.published?'':'<button class="btn btn-sm" onclick="publish(\''+e.id+'\')">Publish</button> ')+'<button class="btn btn-sm" onclick="deleteEntry(\''+e.id+'\')">Delete</button></td></tr>').join('');}catch(e){}
-}
-async function createEntry(){const title=document.getElementById('c-title').value.trim();if(!title)return;const r=await fetch('/api/entries',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title,version:document.getElementById('c-ver').value.trim(),content:document.getElementById('c-content').value,tags:document.getElementById('c-tags').value.trim(),published:document.getElementById('c-pub').checked})});const d=await r.json();if(r.ok){document.getElementById('c-result').innerHTML='<span style="color:var(--green)">Created</span>';document.getElementById('c-title').value='';document.getElementById('c-ver').value='';document.getElementById('c-content').value='';document.getElementById('c-tags').value='';refresh();}else{document.getElementById('c-result').innerHTML='<span style="color:var(--red)">'+esc(d.error)+'</span>';}}
-async function publish(id){await fetch('/api/entries/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({published:true})});refresh();}
-async function deleteEntry(id){if(!confirm('Delete?'))return;await fetch('/api/entries/'+id,{method:'DELETE'});refresh();}
-function esc(s){const d=document.createElement('div');d.textContent=s||'';return d.innerHTML;}
-function timeAgo(s){if(!s)return'—';const d=new Date(s);const diff=Date.now()-d.getTime();if(diff<60000)return'now';if(diff<3600000)return Math.floor(diff/60000)+'m';if(diff<86400000)return Math.floor(diff/3600000)+'h';return Math.floor(diff/86400000)+'d';}
-refresh();setInterval(refresh,8000);
+async function api(u,o){return(await fetch(u,o)).json()}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+async function init(){const sd=await api('/api/stats');
+document.getElementById('ov').innerHTML='<div class="stat"><b>'+sd.entries+'</b>Entries</div><div class="stat"><b>'+sd.words.toLocaleString()+'</b>Words</div><div class="stat"><b style="color:var(--gold)">'+sd.streak+'</b>Day Streak</div><div class="stat"><b>'+sd.months+'</b>Months</div>';load()}
+async function load(){const d=await api('/api/entries');const entries=d.entries||[];
+document.getElementById('list').innerHTML=entries.length?entries.map(e=>'<div class="entry"><div class="entry-date"><span>'+e.date+'</span>'+(e.mood?'<span class="mood">'+esc(e.mood)+'</span>':'')+'</div>'+(e.title?'<div class="entry-title">'+esc(e.title)+'</div>':'')+'<div class="entry-body">'+esc(e.body)+'</div><div class="entry-meta"><span>'+e.word_count+' words</span>'+(e.tags?'<span>'+esc(e.tags)+'</span>':'')+'<span style="cursor:pointer;color:var(--cm)" onclick="del(\''+e.id+'\')">del</span></div></div>').join(''):'<div class="empty">No journal entries yet. Start writing today.</div>'}
+async function del(id){if(!confirm('Delete entry?'))return;await api('/api/entries/'+id,{method:'DELETE'});load();init()}
+function showNew(){document.getElementById('modal').innerHTML='<div class="modal-bg" onclick="if(event.target===this)closeModal()"><div class="modal"><h2>New Entry</h2><label class="fl">Date</label><input type="date" id="ne-date" value="'+new Date().toISOString().split('T')[0]+'"><label class="fl">Title (optional)</label><input type="text" id="ne-title"><label class="fl">How are you feeling?</label><select id="ne-mood" style="width:auto"><option value="">-</option><option>😊</option><option>😐</option><option>😔</option><option>🔥</option><option>💪</option><option>😴</option><option>🎉</option></select><label class="fl">Write</label><textarea id="ne-body" rows="8" placeholder="What happened today..."></textarea><label class="fl">Tags</label><input type="text" id="ne-tags" placeholder="work, personal"><div style="display:flex;gap:.5rem;margin-top:1rem"><button class="btn btn-p" onclick="save()">Save</button><button class="btn" style="border-color:var(--bg3);color:var(--cm)" onclick="closeModal()">Cancel</button></div></div></div>'}
+async function save(){const b={date:document.getElementById('ne-date').value,title:document.getElementById('ne-title').value,body:document.getElementById('ne-body').value,mood:document.getElementById('ne-mood').value,tags:document.getElementById('ne-tags').value};if(!b.body){alert('Write something!');return};await api('/api/entries',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});closeModal();load();init()}
+function closeModal(){document.getElementById('modal').innerHTML=''}
+init()
 </script></body></html>`
-
-func (s *Server) handleUI(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Write([]byte(uiHTML))
-}
