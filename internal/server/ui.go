@@ -1,22 +1,90 @@
 package server
+
 import "net/http"
-func(s *Server)dashboard(w http.ResponseWriter,r *http.Request){w.Header().Set("Content-Type","text/html; charset=utf-8");w.Write([]byte(dashHTML))}
-const dashHTML=`<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Almanac</title>
-<style>:root{--bg:#1a1410;--bg2:#241e18;--bg3:#2e261e;--rust:#c45d2c;--rl:#e8753a;--leather:#a0845c;--cream:#f0e6d3;--cd:#bfb5a3;--cm:#7a7060;--gold:#d4a843;--green:#4a9e5c;--mono:'JetBrains Mono',Consolas,monospace;--serif:'Libre Baskerville',Georgia,serif}*{margin:0;padding:0;box-sizing:border-box}body{background:var(--bg);color:var(--cream);font-family:var(--mono);font-size:13px;line-height:1.6}.hdr{padding:.6rem 1.2rem;border-bottom:1px solid var(--bg3);display:flex;justify-content:space-between;align-items:center}.hdr h1{font-family:var(--serif);font-size:1rem}.hdr h1 span{color:var(--rl)}.main{max-width:650px;margin:0 auto;padding:1rem}.btn{font-family:var(--mono);font-size:.68rem;padding:.3rem .6rem;border:1px solid;cursor:pointer;background:transparent}.btn-p{border-color:var(--rust);color:var(--rl)}.btn-p:hover{background:var(--rust);color:var(--cream)}.overview{display:flex;gap:1.5rem;margin-bottom:1rem;font-size:.7rem;color:var(--leather)}.overview .stat b{display:block;font-size:1.2rem;color:var(--cream)}.entry{background:var(--bg2);border:1px solid var(--bg3);margin-bottom:.5rem;padding:.7rem}.entry-date{font-size:.65rem;color:var(--cm);display:flex;justify-content:space-between}.entry-title{font-size:.85rem;font-weight:600;margin:.2rem 0}.entry-body{font-family:var(--serif);font-size:.82rem;color:var(--cd);line-height:1.8;white-space:pre-wrap}.entry-meta{font-size:.6rem;color:var(--cm);margin-top:.3rem;display:flex;gap:.5rem}.mood{font-size:.75rem}.empty{text-align:center;padding:2rem;color:var(--cm);font-style:italic;font-family:var(--serif)}.modal-bg{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:100}.modal{background:var(--bg2);border:1px solid var(--bg3);padding:1.5rem;width:95%;max-width:600px;max-height:90vh;overflow-y:auto}.modal h2{font-family:var(--serif);font-size:.9rem;margin-bottom:1rem}label.fl{display:block;font-size:.65rem;color:var(--leather);text-transform:uppercase;letter-spacing:1px;margin-bottom:.2rem;margin-top:.5rem}input[type=text],input[type=date],textarea,select{background:var(--bg);border:1px solid var(--bg3);color:var(--cream);padding:.35rem .5rem;font-family:var(--mono);font-size:.78rem;width:100%;outline:none}textarea{resize:vertical;min-height:150px;font-family:var(--serif);font-size:.85rem;line-height:1.8}</style>
-<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital@0;1&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-</head><body><div class="hdr"><h1><span>Almanac</span></h1><button class="btn btn-p" onclick="showNew()">+ Entry</button></div>
-<div class="main"><div id="upgrade-banner" style="display:none;background:#241e18;border:1px solid #8b3d1a;border-left:3px solid #c45d2c;padding:.6rem 1rem;font-size:.78rem;color:#bfb5a3;margin-bottom:.8rem"><strong style="color:#f0e6d3">Free tier</strong> — 10 items max. <a href="https://stockyard.dev/almanac/" target="_blank" style="color:#e8753a">Upgrade to Pro →</a></div><div class="overview" id="ov"></div><div id="list"></div></div><div id="modal"></div>
+
+func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+	w.Write([]byte(dashHTML))
+}
+
+const dashHTML = `<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Almanac</title>
+<style>
+:root{--bg:#1a1410;--bg2:#241e18;--bg3:#2e261e;--rust:#e8753a;--leather:#a0845c;--cream:#f0e6d3;--cd:#bfb5a3;--cm:#7a7060;--gold:#d4a843;--green:#4a9e5c;--mono:'JetBrains Mono',monospace;--serif:'Libre Baskerville',serif}
+*{margin:0;padding:0;box-sizing:border-box}body{background:var(--bg);color:var(--cream);font-family:var(--serif);line-height:1.7}
+.hdr{padding:1rem 1.5rem;border-bottom:1px solid var(--bg3);display:flex;justify-content:space-between;align-items:center}
+.hdr h1{font-family:var(--mono);font-size:.9rem;letter-spacing:2px}
+.stats-bar{display:flex;gap:1.5rem;font-family:var(--mono);font-size:.7rem;color:var(--cm)}
+.stats-bar strong{color:var(--gold)}
+.ct{display:grid;grid-template-columns:280px 1fr;min-height:calc(100vh - 55px)}
+@media(max-width:700px){.ct{grid-template-columns:1fr}}
+.sidebar{border-right:1px solid var(--bg3);padding:1rem}
+.editor{padding:1.5rem}
+.entry-item{padding:.6rem .8rem;cursor:pointer;border-bottom:1px solid var(--bg3);transition:background .1s}
+.entry-item:hover{background:var(--bg2)}
+.entry-item.active{background:var(--bg2);border-left:2px solid var(--rust)}
+.entry-date{font-family:var(--mono);font-size:.7rem;color:var(--leather)}
+.entry-preview{font-size:.78rem;color:var(--cm);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:.1rem}
+.entry-mood{font-size:.7rem;margin-top:.1rem}
+.ed-date{font-family:var(--mono);font-size:.7rem;color:var(--leather);margin-bottom:.3rem}
+.ed-title{width:100%;background:transparent;border:none;color:var(--cream);font-family:var(--serif);font-size:1.2rem;padding:.3rem 0;border-bottom:1px solid var(--bg3);outline:none;margin-bottom:.5rem}
+.ed-body{width:100%;min-height:300px;background:transparent;border:none;color:var(--cd);font-family:var(--serif);font-size:.95rem;line-height:1.8;outline:none;resize:vertical}
+.ed-meta{display:flex;gap:1rem;margin-top:1rem;font-family:var(--mono);font-size:.7rem;align-items:center;flex-wrap:wrap}
+.ed-meta label{color:var(--cm)}
+.ed-meta input,.ed-meta select{background:var(--bg2);border:1px solid var(--bg3);color:var(--cream);font-family:var(--mono);font-size:.7rem;padding:.2rem .4rem}
+.btn{font-family:var(--mono);font-size:.65rem;padding:.3rem .7rem;cursor:pointer;border:1px solid var(--bg3);background:var(--bg);color:var(--cd)}.btn:hover{border-color:var(--leather);color:var(--cream)}
+.btn-p{background:var(--rust);border-color:var(--rust);color:var(--bg)}.btn-p:hover{opacity:.85}
+.search{width:100%;padding:.4rem .6rem;background:var(--bg);border:1px solid var(--bg3);color:var(--cream);font-family:var(--mono);font-size:.75rem;margin-bottom:.5rem;outline:none}
+.empty{text-align:center;padding:3rem;color:var(--cm);font-style:italic}
+.wc{font-family:var(--mono);font-size:.6rem;color:var(--cm)}
+</style></head><body>
+<div class="hdr"><h1>ALMANAC</h1><div class="stats-bar" id="st"></div></div>
+<div class="ct">
+<div class="sidebar">
+  <div style="display:flex;gap:.4rem;margin-bottom:.8rem"><button class="btn btn-p" onclick="newEntry()" style="flex:1">+ New Entry</button></div>
+  <input class="search" id="sq" placeholder="Search entries..." oninput="doSearch(this.value)">
+  <div id="list"></div>
+</div>
+<div class="editor" id="editor"><div class="empty">Select an entry or create a new one</div></div>
+</div>
 <script>
-async function api(u,o){return(await fetch(u,o)).json()}
-function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
-async function init(){const sd=await api('/api/stats');
-document.getElementById('ov').innerHTML='<div class="stat"><b>'+sd.entries+'</b>Entries</div><div class="stat"><b>'+sd.words.toLocaleString()+'</b>Words</div><div class="stat"><b style="color:var(--gold)">'+sd.streak+'</b>Day Streak</div><div class="stat"><b>'+sd.months+'</b>Months</div>';load()}
-async function load(){const d=await api('/api/entries');const entries=d.entries||[];
-document.getElementById('list').innerHTML=entries.length?entries.map(e=>'<div class="entry"><div class="entry-date"><span>'+e.date+'</span>'+(e.mood?'<span class="mood">'+esc(e.mood)+'</span>':'')+'</div>'+(e.title?'<div class="entry-title">'+esc(e.title)+'</div>':'')+'<div class="entry-body">'+esc(e.body)+'</div><div class="entry-meta"><span>'+e.word_count+' words</span>'+(e.tags?'<span>'+esc(e.tags)+'</span>':'')+'<span style="cursor:pointer;color:var(--cm)" onclick="del(\''+e.id+'\')">del</span></div></div>').join(''):'<div class="empty">No journal entries yet. Start writing today.</div>'}
-async function del(id){if(!confirm('Delete entry?'))return;await api('/api/entries/'+id,{method:'DELETE'});load();init()}
-function showNew(){document.getElementById('modal').innerHTML='<div class="modal-bg" onclick="if(event.target===this)closeModal()"><div class="modal"><h2>New Entry</h2><label class="fl">Date</label><input type="date" id="ne-date" value="'+new Date().toISOString().split('T')[0]+'"><label class="fl">Title (optional)</label><input type="text" id="ne-title"><label class="fl">How are you feeling?</label><select id="ne-mood" style="width:auto"><option value="">-</option><option>😊</option><option>😐</option><option>😔</option><option>🔥</option><option>💪</option><option>😴</option><option>🎉</option></select><label class="fl">Write</label><textarea id="ne-body" rows="8" placeholder="What happened today..."></textarea><label class="fl">Tags</label><input type="text" id="ne-tags" placeholder="work, personal"><div style="display:flex;gap:.5rem;margin-top:1rem"><button class="btn btn-p" onclick="save()">Save</button><button class="btn" style="border-color:var(--bg3);color:var(--cm)" onclick="closeModal()">Cancel</button></div></div></div>'}
-async function save(){const b={date:document.getElementById('ne-date').value,title:document.getElementById('ne-title').value,body:document.getElementById('ne-body').value,mood:document.getElementById('ne-mood').value,tags:document.getElementById('ne-tags').value};if(!b.body){alert('Write something!');return};await api('/api/entries',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});closeModal();load();init()}
-function closeModal(){document.getElementById('modal').innerHTML=''}
-init()
-fetch('/api/tier').then(r=>r.json()).then(j=>{if(j.tier==='free'){var b=document.getElementById('upgrade-banner');if(b)b.style.display='block'}}).catch(()=>{var b=document.getElementById('upgrade-banner');if(b)b.style.display='block'});
+const A='/api';let entries=[],current=null;
+async function ld(){const[e,s]=await Promise.all([fetch(A+'/entries').then(r=>r.json()),fetch(A+'/stats').then(r=>r.json())]);entries=e.entries||[];
+document.getElementById('st').innerHTML='<span><strong>'+s.streak+'</strong> day streak</span><span><strong>'+s.entries+'</strong> entries</span><span><strong>'+s.words+'</strong> words</span>';
+rnList();}
+function rnList(){
+  const m=document.getElementById('list');
+  if(!entries.length){m.innerHTML='<div class="empty" style="padding:1rem">No entries yet</div>';return;}
+  let h='';entries.forEach(e=>{
+    const moods={'great':'😊','good':'🙂','okay':'😐','bad':'😞','awful':'😢'};
+    h+='<div class="entry-item'+(current&&current.id===e.id?' active':'')+'" onclick="sel(\''+e.id+'\')"><div class="entry-date">'+e.date+(e.mood?' '+(moods[e.mood]||e.mood):'')+'</div>';
+    h+='<div class="entry-preview">'+(e.title||esc(e.body.substring(0,60)))+'</div></div>';
+  });m.innerHTML=h;
+}
+function sel(id){current=entries.find(e=>e.id===id);rnList();rnEditor();}
+function rnEditor(){
+  if(!current){document.getElementById('editor').innerHTML='<div class="empty">Select an entry</div>';return;}
+  const e=current;
+  document.getElementById('editor').innerHTML='<div class="ed-date">'+e.date+'</div><input class="ed-title" id="et" value="'+esc(e.title||'')+'" placeholder="Title (optional)"><textarea class="ed-body" id="eb">'+esc(e.body)+'</textarea><div class="ed-meta"><label>Mood</label><select id="em"><option value="">—</option><option value="great"'+(e.mood==='great'?' selected':'')+'>😊 Great</option><option value="good"'+(e.mood==='good'?' selected':'')+'>🙂 Good</option><option value="okay"'+(e.mood==='okay'?' selected':'')+'>😐 Okay</option><option value="bad"'+(e.mood==='bad'?' selected':'')+'>😞 Bad</option><option value="awful"'+(e.mood==='awful'?' selected':'')+'>😢 Awful</option></select><label>Tags</label><input id="eg" value="'+esc(e.tags||'')+'" placeholder="comma separated" style="width:150px"><span class="wc" id="wc">'+wc(e.body)+' words</span><button class="btn btn-p" onclick="save()">Save</button><button class="btn" onclick="del()" style="color:#c94444">Delete</button></div>';
+  document.getElementById('eb').addEventListener('input',function(){document.getElementById('wc').textContent=wc(this.value)+' words';});
+}
+async function save(){
+  const body={title:document.getElementById('et').value,body:document.getElementById('eb').value,mood:document.getElementById('em').value,tags:document.getElementById('eg').value};
+  await fetch(A+'/entries/'+current.id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});ld();
+}
+async function del(){if(confirm('Delete this entry?')){await fetch(A+'/entries/'+current.id,{method:'DELETE'});current=null;ld();rnEditor();}}
+async function newEntry(){
+  const today=new Date().toISOString().split('T')[0];
+  const r=await fetch(A+'/entries',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({date:today,body:''})}).then(r=>r.json());
+  await ld();sel(r.id);
+}
+let searchTimeout;
+async function doSearch(q){clearTimeout(searchTimeout);searchTimeout=setTimeout(async()=>{
+  if(!q){ld();return;}
+  const r=await fetch(A+'/search?q='+encodeURIComponent(q)).then(r=>r.json());entries=r.entries||[];rnList();
+},300);}
+function wc(s){return s?s.trim().split(/\s+/).filter(w=>w).length:0;}
+function esc(s){if(!s)return'';return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+ld();
 </script></body></html>`
